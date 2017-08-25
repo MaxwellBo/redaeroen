@@ -1,2 +1,4 @@
 google-cloud-language
+google-cloud-speech
 BeautifulTable
+pyaudio
