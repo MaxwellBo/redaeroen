@@ -1,19 +1,18 @@
 from google.cloud import language
 from google.cloud.language import enums
 from google.cloud.language import types
+from google.cloud.language.syntax import PartOfSpeech
 
-def syntax_text(text):
+def process(text):
     client = language.LanguageServiceClient()
 
-    # Instantiates a plain text document.
     document = types.Document(
         content=text,
         type=enums.Document.Type.PLAIN_TEXT)
 
-    # Detects syntax in the document. You can also analyze HTML with:
-    #   document.type == enums.Document.Type.HTML
-    tokens = client.analyze_syntax(document).tokens
+    return client.analyze_syntax(document).tokens
 
+def render_tokens(tokens):
     # part-of-speech tags from enums.PartOfSpeech.Tag
     pos_tag = ('UNKNOWN', 'ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM',
                'PRON', 'PRT', 'PUNCT', 'VERB', 'X', 'AFFIX')
@@ -22,4 +21,4 @@ def syntax_text(text):
         print(u'{}: {}'.format(pos_tag[token.part_of_speech.tag],
                                token.text.content))
 
-syntax_text("Hello world!")
+render_tokens(process("Hello world!"))
