@@ -3,7 +3,26 @@ from textobject import *
 from verb import *
 from context import *
 
-# keyboard = PyKeyboard()
+current_mode = Command()
+
+class MetaLanguage(object):
+    pass
+
+class Dictation(MetaLanguage):
+    def to_presses(self, text):
+        text = current_mode.transform(text)
+        return LiteralPress(text)
+
+class Command(MetaLanguage):
+    def to_presses(self, text):
+        pass
+        
+    
+
+
+def interpret_stream(text):
+    pass
+
 
 class KeyboardMock(object):
     def __init__(self):
@@ -96,6 +115,3 @@ if __name__ == "__main__":
     ]
 
     print(presses)
-
-    # for i in presses:
-    #     i.execute(keyboard)
