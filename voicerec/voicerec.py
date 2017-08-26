@@ -1,6 +1,7 @@
 import sys
 import pyaudio
 import re
+import time
 
 from six.moves import queue
 
@@ -23,6 +24,7 @@ class MicGen(object):
                                                         frames_per_buffer=self._chunk_size, 
                                                         stream_callback=self._fill_buffer)
         self.closed = False
+
         return self
 
     def __exit__(self, type, value, traceback):
@@ -43,6 +45,7 @@ class MicGen(object):
 
     def generator(self):
         while not self.closed:
+
             chunk = self._buffer.get()
             if chunk is None:
                 return
@@ -56,7 +59,6 @@ class MicGen(object):
                     data.append(chunk)
                 except queue.Empty:
                     break
-            # print("<Yo>")
             yield b''.join(data)
 
 
@@ -71,15 +73,15 @@ class VoiceRecogniser(object):
             language_code='en-US')
         self._streaming_config = types.StreamingRecognitionConfig(
             config=self._speech_config,
-            single_utterance=True,
+            single_utterance=False,
             interim_results=False
         )
-        self._command_phrase=re.compile(command_phrase)
+        self._command_phrase=re.compile(command_phrase, re.I)
         gen = self._input_stream.generator()
         self._requests = (types.StreamingRecognizeRequest(audio_content=content)
                     for content
                     in gen)
-        
+        self._responses = self._client.streaming_recognize(self._streaming_config, self._requests)
 
     def _process_response(self, response):
         if not response.results:
@@ -93,32 +95,47 @@ class VoiceRecogniser(object):
         # Get the top alternative
         transcript = result.alternatives[0].transcript
 
-        # print("<" + str(result.is_final) + ">: " + transcript) 
-        # Only use final results
-        # print("choosing:")
-        if result.is_final:
-            print("<command>") 
-            return transcript
-        else:
-            # print("<inprog>: " + transcript) 
+        # Check for the command phrase
+        if not re.search(self._command_phrase, transcript):
             return None
 
-        # Check for the command phrase
-        # if not re.search(self._command_phrase, transcript, re.I):
-        #     continue
+        # Only use final results
+        if result.is_final: 
+            return transcript
+        else:
+            return None
 
     def generator(self): 
         while True:
-            response = self._client.streaming_recognize(self._streaming_config, 
-                                                        self._requests)
-            transcript = self._process_response(next(response))
+            response = next(self._responses)
+            transcript = self._process_response(response)
 
             if transcript is not None:
                 yield transcript
 
-if __name__ == '__main__':
+
+def voice_command_generator(command_str: str = None):
     with MicGen(16000, int(16000/10)) as stream:
-        vr = VoiceRecogniser(stream, 'stupid')
-        # Print things out
-        for command in vr.generator():
-            print("COMMAND: " + command)
+        while True:
+            vr = VoiceRecogniser(stream, command_str)
+            # Print things out
+            try:
+                for command in vr.generator():
+                    yield command
+            except grpc._channel._Rendezvous:
+                continue
+
+if __name__ == '__main__':
+    for c in voice_command_generator('hey google'):
+        print("COMMAND: " + c)
+
+    # with MicGen(16000, int(16000/10)) as stream:
+    #     while True:
+    #         vr = VoiceRecogniser(stream, 'stupid')
+            
+    #         # Print things out
+    #         try:
+    #             for command in vr.generator():
+    #                 print("COMMAND: " + command)
+    #         except grpc._channel._Rendezvous:
+    #             print("FUCK MY LIFE")
