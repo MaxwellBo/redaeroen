@@ -4,3 +4,4 @@ BeautifulTable
 pyaudio
 SpeechRecognition
 pykeyboard
+ete3
