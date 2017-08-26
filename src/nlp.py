@@ -140,4 +140,3 @@ if __name__ == "__main__":
     render_tokens(tokens)
     print(to_ir(tokens))
 
-
