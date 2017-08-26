@@ -1,4 +1,4 @@
-# from pykeyboard import PyKeyboard
+from pykeyboard import PyKeyboard
 from textobject import *
 from verb import *
 from context import *
@@ -29,23 +29,28 @@ class KeyboardMock(object):
         self.buffer = []
         
     def tap_key(self, key):
-        self.buffer.append(f" {key} ")
+        print("Tapping: " + key)
+        self.buffer.append(" "+ key + " ")
 
     def type_string(self, string):
+        print("Appending: " + string)
         self.buffer.append(string)
 
     escape_key = "esc"
 
-k = KeyboardMock()
+k = PyKeyboard()
 
 class KeyPresses(object):
     def execute(self, k): raise NotImplementedError
 
-    def __repr__(self):
-        # lord have mercy on my soul
-        printer = KeyboardMock()
-        self.execute(printer)
-        return str(k.buffer)
+    def __str__():
+        return "<Empty>"
+
+    # def __repr__(self):
+    #     # lord have mercy on my soul
+    #     printer = KeyboardMock()
+    #     self.execute(printer)
+    #     return str(k.buffer)
 
 class LiteralPress(KeyPresses):
     def __init__(self, txt):
@@ -53,6 +58,9 @@ class LiteralPress(KeyPresses):
 
     def execute(self, k):
         k.type_string(self.txt)
+
+    def __str__(self):
+        return self.txt
 
 class ControlPress(KeyPresses):
     lookup = {
@@ -64,6 +72,9 @@ class ControlPress(KeyPresses):
     def execute(self, k):
         key = self.lookup.get(self.key, self.key)
         k.tap_key(key)
+
+    def __str__(self):
+        return self.key
 
 class Mode(object):
     def transform(self, txt): raise NotImplementedError
