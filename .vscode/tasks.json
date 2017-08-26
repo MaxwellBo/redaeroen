@@ -1,0 +1,23 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "name": "Python",
+            "type": "python",
+            "pythonPath":"${config.python.pythonPath}", 
+            "request": "launch",
+            "stopOnEntry": true,
+            "console": "none",
+            "program": "${file}",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {"name":"value"}
+        }
+    ]
+}
