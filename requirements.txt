@@ -5,3 +5,4 @@ pyaudio
 SpeechRecognition
 pykeyboard
 ete3
+pygame

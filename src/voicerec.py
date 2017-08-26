@@ -70,13 +70,16 @@ class VoiceRecogniser(object):
         self._speech_config = types.RecognitionConfig(
             encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
             sample_rate_hertz=input_stream.get_rate(),
-            language_code='en-US')
+            language_code='en-AU')
         self._streaming_config = types.StreamingRecognitionConfig(
             config=self._speech_config,
             single_utterance=False,
             interim_results=False
         )
-        self._command_phrase=re.compile(command_phrase, re.I)
+        if command_phrase is None:
+            self._command_phrase = None
+        else:
+            self._command_phrase=re.compile(command_phrase, re.I)
         gen = self._input_stream.generator()
         self._requests = (types.StreamingRecognizeRequest(audio_content=content)
                     for content
@@ -95,23 +98,51 @@ class VoiceRecogniser(object):
         # Get the top alternative
         transcript = result.alternatives[0].transcript
 
-        # Check for the command phrase
-        if not re.search(self._command_phrase, transcript):
-            return None
+        return transcript, result.is_final
 
-        # Only use final results
-        if result.is_final: 
+    def _process_response_final(self, response):
+        (transcript, is_final) = self._process_response(response)
+
+        if is_final:
+            # Check for the command phrase
+            if self._command_phrase is not None and not re.search(self._command_phrase, transcript):
+                return None
             return transcript
         else:
             return None
 
-    def generator(self): 
+    def generator_all(self):
         while True:
             response = next(self._responses)
-            transcript = self._process_response(response)
+            if response is None:
+                continue
+
+            try:
+                transcript, is_final = self._process_response(response)
+            except TypeError:
+                continue
+
+            if transcript is not None:
+                yield transcript, is_final
+
+    def generator_final(self):
+        while True:
+            response = next(self._responses)
+            transcript = self._process_response_final(response)
 
             if transcript is not None:
                 yield transcript
+
+
+def voice_recognition_generator():
+    with MicGen(16000, int(16000/10)) as stream:
+        while True:
+            vr = VoiceRecogniser(stream)
+            try:
+                for command, is_final in vr.generator_all():
+                    yield command, is_final
+            except grpc._channel._Rendezvous:
+                continue
 
 
 def voice_command_generator(command_str: str = None):
@@ -120,10 +151,11 @@ def voice_command_generator(command_str: str = None):
             vr = VoiceRecogniser(stream, command_str)
             # Print things out
             try:
-                for command in vr.generator():
+                for command in vr.generator_final():
                     yield command
             except grpc._channel._Rendezvous:
                 continue
+
 
 if __name__ == '__main__':
     for c in voice_command_generator('hey google'):
