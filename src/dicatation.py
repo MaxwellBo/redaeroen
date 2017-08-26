@@ -7,19 +7,16 @@ from verb import *
 from context import *
 
 ###############
-### GLOBALS ###
-###############
+# GLOBALS #
+###########
 
 k = PyKeyboard()
-form = StandardForm
+current_form = StandardForm
 current_mode = Command
 
 #########
 # MODES #
 #########
-
-class Mode(object):
-    pass
 
 class Dictation(Mode):
     @classmethod
@@ -34,12 +31,15 @@ class Command(Mode):
         render_tokens(tokens)
         return extract_command(tokens)
 
-def transition_mode(new):
+def interpret_meta(meta):
     if new is Dictation:
         k.execute(ControlPress("i"))
-    
-    if new is Command:
+        current_mode = new
+    elif new is Command:
         k.execute(ControlPress("esc"))
+        current_mode = new
+
+    # AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHh
 
 #########
 # FORMS #
