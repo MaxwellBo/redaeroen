@@ -1,62 +1,90 @@
+from nlp import process, render_tokens, to_ir
+from voicerec import voice_command_generator
+from nlp_to_vim import extract_command
 from pykeyboard import PyKeyboard
 from textobject import *
 from verb import *
 from context import *
 
-current_mode = Command()
-
-class MetaLanguage(object):
-    pass
-
-class Dictation(MetaLanguage):
-    def to_presses(self, text):
-        text = current_mode.transform(text)
-        return LiteralPress(text)
-
-class Command(MetaLanguage):
-    def to_presses(self, text):
-        pass
-        
-    
-
-
-def interpret_stream(text):
-    pass
-
-
-class KeyboardMock(object):
-    def __init__(self):
-        self.buffer = []
-        
-    def tap_key(self, key):
-        print("Tapping: " + key)
-        self.buffer.append(" "+ key + " ")
-
-    def type_string(self, string):
-        print("Appending: " + string)
-        self.buffer.append(string)
-
-    escape_key = "esc"
+###############
+### GLOBALS ###
+###############
 
 k = PyKeyboard()
+form = StandardForm
+current_mode = Command
 
+#########
+# MODES #
+#########
+
+class Mode(object):
+    pass
+
+class Dictation(Mode):
+    @classmethod
+    def to_presses(cls, command):
+        text = current_mode.transform(command)
+        return LiteralPress(text)
+
+class Command(Mode):
+    @classmethod
+    def to_presses(cls, command):
+        tokens = process(command)
+        render_tokens(tokens)
+        return extract_command(tokens)
+
+def transition_mode(new):
+    if new is Dictation:
+        k.execute(ControlPress("i"))
+    
+    if new is Command:
+        k.execute(ControlPress("esc"))
+
+#########
+# FORMS #
+#########
+
+class Form(object):
+    def transform(self, txt): raise NotImplementedError
+
+class StandardForm(Form):
+    def transform(self, txt):
+        subs = [
+            ('open paren', '('),
+            ('close paren', ')'),
+            ('colon', ':'),
+            ('ellipsis', '...')
+        ]
+        for orig, rep in subs:
+            txt = txt.replace(orig, rep)
+
+        return LiteralPress(txt)
+
+class CamelCaseForm(Form):
+    def transform(self, txt):
+        words = txt.split(' ')
+        if words:
+            transformed = ''.join(words[0] + [w.title() for w in words[1:]])
+        else:
+            transformed = ''
+        return LiteralPress(transformed)
+
+###########
+# PRESSES #
+###########
+ 
 class KeyPresses(object):
-    def execute(self, k): raise NotImplementedError
+    def execute(self): raise NotImplementedError
 
     def __str__():
         return "<Empty>"
-
-    # def __repr__(self):
-    #     # lord have mercy on my soul
-    #     printer = KeyboardMock()
-    #     self.execute(printer)
-    #     return str(k.buffer)
 
 class LiteralPress(KeyPresses):
     def __init__(self, txt):
         self.txt = txt
 
-    def execute(self, k):
+    def execute(self):
         k.type_string(self.txt)
 
     def __str__(self):
@@ -69,37 +97,17 @@ class ControlPress(KeyPresses):
     def __init__(self, key):
         self.key = key
 
-    def execute(self, k):
+    def execute(self):
         key = self.lookup.get(self.key, self.key)
         k.tap_key(key)
 
     def __str__(self):
         return self.key
 
-class Mode(object):
-    def transform(self, txt): raise NotImplementedError
+########
+# NLP ##
+########
 
-class CamelCaseMode(object):
-    def transform(self, txt):
-        words = txt.split(' ')
-        if words:
-            transformed = ''.join(words[0] + [w.title() for w in words[1:]])
-        else:
-            transformed = ''
-        return LiteralPress(transformed)
-
-class StandardMode(object):
-    def transform(self, txt):
-        subs = [
-            ('open paren', '('),
-            ('close paren', ')'),
-            ('colon', ':'),
-            ('ellipsis', '...')
-        ]
-        for orig, rep in subs:
-            txt = txt.replace(orig, rep)
-
-        return LiteralPress(txt)
 
 def ctrl(xs):
     return [ ControlPress(i) for i in xs ]
@@ -118,11 +126,8 @@ def action(repetition, verb, context, motion):
         return []
 
 if __name__ == "__main__":
-    inp = StandardMode().transform('def hello open paren close paren colon ellipsis')
-    presses = [
-        ControlPress('i'),
-        inp,
-        ControlPress('esc')
-    ]
-
-    print(presses)
+    for command in voice_command_generator('hey google'):
+        presses = current_mode.to_presses(command)
+         
+        for press in presses:
+            p.execute()
