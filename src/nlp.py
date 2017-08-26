@@ -11,6 +11,25 @@ POS_LOOKUP = {v: k for k, v in enums.PartOfSpeech.Tag.__dict__.items()}
 # https://github.com/GoogleCloudPlatform/google-cloud-python/blob/master/language/google/cloud/gapic/language/v1/enums.py
 LABEL_LOOKUP = {v: k for k, v in enums.DependencyEdge.Label.__dict__.items()}
 
+def align( content=""
+            , begin=""
+            , part_of_speech=""
+            , parent_content=""
+            , children_content=""
+            , edge_index=""
+            , edge_label=""
+            , lemma=""
+            ):
+    return [ content
+        #    , begin
+            , part_of_speech
+            , parent_content
+            , children_content
+        #    , edge_index
+            , edge_label
+            , lemma 
+            ]
+            
 def bind_tokens(tokens):
     def get_dependant(self, label) -> Optional[types.Token]:
         try:
@@ -18,6 +37,17 @@ def bind_tokens(tokens):
         except Exception as e:
             return None
 
+    def pretty(token):
+        verbose_tag = PartOfSpeech.reverse(POS_LOOKUP[ token.part_of_speech.tag ])
+
+        return align( content=token.text.content
+                    , begin=token.text.begin_offset
+                    , part_of_speech=verbose_tag
+                    , parent_content=token.get_parent().text.content
+                    , children_content=str([i.text.content for i in token.get_children() ])
+                    , edge_label=LABEL_LOOKUP[token.dependency_edge.label]
+                    , lemma=token.lemma
+                    , )
 
     def get_dependants(self) -> Dict[enums.DependencyEdge.Label, types.Token]:
         return { i.dependency_edge.label: i for i in self.get_children() }
@@ -25,6 +55,8 @@ def bind_tokens(tokens):
     types.Token.get_children = lambda self: [ i for i in tokens if i.get_parent() is self ]  
     types.Token.get_parent = lambda self: tokens[self.dependency_edge.head_token_index]
     types.Token.get_dependant = get_dependant
+    types.Token.pretty = pretty
+    types.Token.__str__ = lambda self: str(self.pretty())
 
 def process(text):
     client = language.LanguageServiceClient()
@@ -42,36 +74,6 @@ def get_token_by_pos(tokens, tag):
 
 def render_tokens(tokens):
 
-    def align( content=""
-             , begin=""
-             , part_of_speech=""
-             , parent_content=""
-             , children_content=""
-             , edge_index=""
-             , edge_label=""
-             , lemma=""
-             ):
-        return [ content
-            #    , begin
-               , part_of_speech
-               , parent_content
-               , children_content
-            #    , edge_index
-               , edge_label
-               , lemma 
-               ]
-
-    def parse(token):
-        verbose_tag = PartOfSpeech.reverse(POS_LOOKUP[ token.part_of_speech.tag ])
-
-        return align( content=token.text.content
-                    , begin=token.text.begin_offset
-                    , part_of_speech=verbose_tag
-                    , parent_content=token.get_parent().text.content
-                    , children_content=str([i.text.content for i in token.get_children() ])
-                    , edge_label=LABEL_LOOKUP[token.dependency_edge.label]
-                    , lemma=token.lemma
-                    , )
 
     table = BeautifulTable(max_width=120)
     table.column_headers = align( content="content" 
@@ -84,7 +86,7 @@ def render_tokens(tokens):
                                 , lemma="lemma"
                                 )
 
-    for i in tokens: table.append_row(parse(i))
+    for i in tokens: table.append_row(i.pretty())
     print(table)
 
 def to_ir(tokens):
