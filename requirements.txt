@@ -3,3 +3,4 @@ google-cloud-speech
 BeautifulTable
 pyaudio
 SpeechRecognition
+pykeyboard
