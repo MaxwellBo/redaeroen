@@ -113,14 +113,29 @@ class VoiceRecogniser(object):
             if transcript is not None:
                 yield transcript
 
-if __name__ == '__main__':
+
+def voice_command_generator(command_str: str = None):
     with MicGen(16000, int(16000/10)) as stream:
         while True:
-            vr = VoiceRecogniser(stream, 'stupid')
-            
+            vr = VoiceRecogniser(stream, command_str)
             # Print things out
             try:
                 for command in vr.generator():
-                    print("COMMAND: " + command)
+                    yield command
             except grpc._channel._Rendezvous:
-                print("FUCK MY LIFE")
+                continue
+
+if __name__ == '__main__':
+    for c in voice_command_generator('hey google'):
+        print("COMMAND: " + c)
+
+    # with MicGen(16000, int(16000/10)) as stream:
+    #     while True:
+    #         vr = VoiceRecogniser(stream, 'stupid')
+            
+    #         # Print things out
+    #         try:
+    #             for command in vr.generator():
+    #                 print("COMMAND: " + command)
+    #         except grpc._channel._Rendezvous:
+    #             print("FUCK MY LIFE")
