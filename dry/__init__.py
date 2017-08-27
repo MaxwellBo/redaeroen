@@ -7,7 +7,7 @@ from threading import Thread
 from queue import Queue
 
 from src.voicerec import voice_recognition_generator
-from src.nlp import process, render_tokens, get_token_by_pos
+from src.nlp import process, get_token_by_pos
 
 from google.cloud.language import enums
 
