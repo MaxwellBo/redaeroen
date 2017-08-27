@@ -11,7 +11,16 @@ from src.nlp import process, render_tokens, get_token_by_pos
 
 from google.cloud.language import enums
 
-from . import *
+from .drawing import GameGraphics
+
+
+uncounted_words = {
+    'is',
+    '\'s',
+    'are',
+    'be',
+    'do'
+}
 
 
 class GameState(object):
@@ -43,7 +52,7 @@ def get_nouns_and_verbs(voice_line: str) -> List[str]:
     nv_tokens = get_token_by_pos(tokens, enums.PartOfSpeech.Tag.VERB)
     nv_tokens.extend(get_token_by_pos(tokens, enums.PartOfSpeech.Tag.NOUN))
 
-    result = [token.text.content for token in nv_tokens]
+    result = [token.text.content for token in nv_tokens if token.text.content not in uncounted_words]
 
     return result
 
@@ -59,12 +68,13 @@ def voice_input_gen():
         yield voice_line, get_nouns_and_verbs(voice_line), is_final
 
 
-def vr_thread(game_state: GameState, line_queue: Queue) -> None:
+def vr_thread(game_state: GameState, line_queue: Queue, words_queue: Queue) -> None:
     """
     Main loop (to run in a separate thread) for voice recognition
 
     :param game_state: the global game state which this thread will update
     :param line_queue: the threadsafe queue to pass the voice lines around
+    :param words_queue: the threadsafe queue to pass the used words around
     :return: None
     """
     for voice_line, words, is_final in voice_input_gen():
@@ -74,42 +84,46 @@ def vr_thread(game_state: GameState, line_queue: Queue) -> None:
         if game_state.check_words(words):
             print("You reused the following: " + str(game_state.get_reused_words(words)))
 
-        line_queue.put(voice_line)
-
         game_state.add_words(words)
+
+        words_queue.put(words.copy())
+        line_queue.put(voice_line)
 
         print("Line: " + voice_line)
         print("Currently used: " + str(game_state._used_words_ordered))
 
 
-def main():
-    game_state = GameState()
-    line_queue = Queue()
-
-    voice_thread = Thread(target=vr_thread,
-                          kwargs={'game_state': game_state, 'line_queue': line_queue})
-    voice_thread.daemon = True
-    voice_thread.start()
-
-    pygame.init()
+def main() -> int:
+    game_graphics = GameGraphics()
 
     clock = pygame.time.Clock()
 
-    pygame.font.init()
+    game_state = GameState()
+    line_queue = Queue()
+    words_queue = Queue()
 
-    screen = pygame.display.set_mode((640, 480))
-    screen.fill((255, 255, 255))
-    pygame.display.update()
+    voice_thread = Thread(target=vr_thread,
+                          kwargs={'game_state': game_state, 'line_queue': line_queue, 'words_queue': words_queue})
+    voice_thread.daemon = True
+    voice_thread.start()
 
-    font = pygame.font.Font(None, 30)
+    game_running = True
 
-    while True:
+    while game_running:
+        # Handle voice input events
         if not line_queue.empty():
-            voice_line = line_queue.get()
-            text = font.render(voice_line, 1, (0, 255, 0))
-            screen.fill((255, 255, 255))
-            screen.blit(text, (screen.get_rect().width / 2 - text.get_rect().width / 2, screen.get_rect().height - 5 - text.get_rect().height))
+            game_graphics.set_voice_line(line_queue.get())
+        if not words_queue.empty():
+            game_graphics.add_many_to_spiral(words_queue.get())
 
-        pygame.display.update()
+        # Handle pygame events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_running = False
 
-        ms_elapsed = clock.tick(60)
+        # Redraw
+        game_graphics.tick()
+
+        clock.tick(60)
+
+    return 0

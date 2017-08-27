@@ -3,12 +3,13 @@ import pyaudio
 import re
 import time
 
-from six.moves import queue
+import queue
 
 import grpc
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
+
 
 class MicGen(object):
     def __init__(self, rate, chunk_size):
@@ -16,6 +17,7 @@ class MicGen(object):
         self._chunk_size = chunk_size
         self._buffer = queue.Queue()
         self.closed = True
+        self.i = 0
 
     def __enter__(self):
         self._audio_interface = pyaudio.PyAudio()
@@ -59,6 +61,8 @@ class MicGen(object):
                     data.append(chunk)
                 except queue.Empty:
                     break
+            self.i += 1
+            # print(f'Yield: {self.i}')
             yield b''.join(data)
 
 
@@ -113,7 +117,9 @@ class VoiceRecogniser(object):
 
     def generator_all(self):
         while True:
+            t = time.time()
             response = next(self._responses)
+            print("REQUEST TOOK: " + str(time.time() - t))
             if response is None:
                 continue
 
@@ -146,7 +152,7 @@ def voice_recognition_generator():
 
 
 def voice_command_generator(command_str: str = None):
-    with MicGen(16000, int(16000/10)) as stream:
+    with MicGen(16000, int(16000/20)) as stream:
         while True:
             vr = VoiceRecogniser(stream, command_str)
             # Print things out
