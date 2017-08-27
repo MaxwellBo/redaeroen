@@ -7,6 +7,7 @@ from beautifultable import BeautifulTable
 import networkx as nx
 import matplotlib.pyplot as plt
 import subprocess
+from voicerec import voice_recognition_generator
 
 from typing import Optional, Dict
 
@@ -127,7 +128,7 @@ def print_tree(tokens):
     nx.draw_networkx_edge_labels(G, pos=depth_map, edge_labels=edge_map, font_size=6)
     
     plt.axis('off')
-    plt.savefig("g.png", transparent=True)
+    plt.savefig("g.png", transparent=True, dpi=150)
 
     subprocess.run(["imgcat", "g.png"])
 
@@ -152,4 +153,9 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    pretty_print_text(text=args.text[0], view=args.view)
+    if args.listen:
+        print("Listening")
+        for (text, _) in voice_recognition_generator():
+            pretty_print_text(text, view=args.view)
+    else:
+        pretty_print_text(text=args.text[0], view=args.view)
