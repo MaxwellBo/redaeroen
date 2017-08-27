@@ -19,8 +19,22 @@ uncounted_words = {
     '\'s',
     'are',
     'be',
-    'do'
+    'do',
+    '\'m',
+    'am'
 }
+
+
+def get_score(nvs: List[str]) -> int:
+    score: int = 0
+
+    for word in nvs:
+        if len(word) < 3:
+            continue
+        formula = max([1, (len(word) - 4) * 1.5 + max([0, ((len(word) - 5) * (len(word) - 5))])])
+        score += formula
+
+    return score
 
 
 class GameState(object):
@@ -28,6 +42,9 @@ class GameState(object):
     def __init__(self):
         self._used_words: Set[str] = set()
         self._used_words_ordered: List[str] = []
+        self.score = 0
+        self.game_finished = False
+        self.failed_word = ''
 
     def get_reused_words(self, words: List[str]) -> List[str]:
         return [word for word in words if word in self._used_words]
@@ -36,8 +53,11 @@ class GameState(object):
         return len(self.get_reused_words(words)) != 0
 
     def add_words(self, words: List[str]) -> None:
+        if self.game_finished:
+            return
         self._used_words.update(set(words))
         self._used_words_ordered.extend(words)
+        self.score += get_score(words)
 
 
 def get_nouns_and_verbs(voice_line: str) -> List[str]:
@@ -55,6 +75,7 @@ def get_nouns_and_verbs(voice_line: str) -> List[str]:
     result = [token.text.content for token in nv_tokens if token.text.content not in uncounted_words]
 
     return result
+
 
 
 def voice_input_gen():
@@ -82,7 +103,9 @@ def vr_thread(game_state: GameState, line_queue: Queue, words_queue: Queue) -> N
             continue
 
         if game_state.check_words(words):
-            print("You reused the following: " + str(game_state.get_reused_words(words)))
+            game_state.failed_word = game_state.get_reused_words(words)[0]
+            game_state.game_finished = True
+            return
 
         game_state.add_words(words)
 
@@ -110,11 +133,17 @@ def main() -> int:
     game_running = True
 
     while game_running:
+        # Check for game over
+        if (False or game_state.game_finished) and not game_graphics.game_over:
+            print("GAME ENDED")
+            game_graphics.end_game(game_state.failed_word)
+
         # Handle voice input events
         if not line_queue.empty():
             game_graphics.set_voice_line(line_queue.get())
+            game_graphics.add_to_score(game_state.score)
         if not words_queue.empty():
-            game_graphics.add_many_to_spiral(words_queue.get())
+            game_graphics.add_many_to_cloud(words_queue.get())
 
         # Handle pygame events
         for event in pygame.event.get():
