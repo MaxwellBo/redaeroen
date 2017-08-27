@@ -106,8 +106,8 @@ def print_tree(tokens):
     label_map = {}
 
     for i in tokens:
-        verbose_tag = PartOfSpeech.reverse(POS_LOOKUP[ i.part_of_speech.tag ])
-        label_map[i.text.begin_offset] = i.text.content
+        short_tag = POS_LOOKUP[ i.part_of_speech.tag ]
+        label_map[i.text.begin_offset] =  f"{i.text.content}\n{short_tag}"
         for j in i.get_children():
             if i is not j:
                 G.add_edge(i.text.begin_offset, j.text.begin_offset)
