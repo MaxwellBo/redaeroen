@@ -46,6 +46,8 @@ class GameState(object):
         self.game_finished = False
         self.failed_word = ''
 
+        self.time_left = 30 * 60
+
     def get_reused_words(self, words: List[str]) -> List[str]:
         return [word for word in words if word in self._used_words]
 
@@ -108,7 +110,8 @@ def vr_thread(game_state: GameState, line_queue: Queue, words_queue: Queue) -> N
             return
 
         game_state.add_words(words)
-
+        cur_t = game_state.time_left
+        game_state.time_left = min([30 * 60, cur_t + 5 * 60])
         words_queue.put(words.copy())
         line_queue.put(voice_line)
 
@@ -134,9 +137,10 @@ def main() -> int:
 
     while game_running:
         # Check for game over
-        if (False or game_state.game_finished) and not game_graphics.game_over:
-            print("GAME ENDED")
+        if game_state.game_finished and not game_graphics.game_over:
             game_graphics.end_game(game_state.failed_word)
+        if game_state.time_left <= 0 and not game_graphics.game_over:
+            game_graphics.end_game('')
 
         # Handle voice input events
         if not line_queue.empty():
@@ -151,8 +155,11 @@ def main() -> int:
                 game_running = False
 
         # Redraw
-        game_graphics.tick()
+        game_graphics.tick(game_state.time_left)
 
+        # Decrement timer
+        if not game_state.game_finished:
+            game_state.time_left -= 1
         clock.tick(60)
 
     return 0

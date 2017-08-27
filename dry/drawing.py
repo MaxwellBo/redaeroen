@@ -2,6 +2,7 @@ from typing import List, Set, Tuple
 
 import random
 import time
+import math
 
 import pygame
 import pygame.freetype
@@ -34,10 +35,13 @@ class GameGraphics(object):
         self.prior_score = 0
         self.score = 0
 
+        self.time_max = 30 * 60
+
         self.game_over = False
         self.game_over_animstate = 0
         self.game_over_text_animstate = 0
-        self.failed_word = 'memes'
+        self.failed_word = ''
+
 
     def _init_settings(self) -> None:
         # Colours
@@ -273,7 +277,10 @@ class GameGraphics(object):
             t_surf = pygame.Surface((surface.get_width(), surface.get_height()))
 
             text, _ = self.failed_font.render('You Lost!', self.failed_fg)
-            fw_text, _ = self.failed_font_small.render('You reused: ' + self.failed_word, self.failed_fg)
+            if self.failed_word == '':
+                fw_text, _ = self.failed_font_small.render('You ran out of time!', self.failed_fg)
+            else:
+                fw_text, _ = self.failed_font_small.render('You reused: ' + self.failed_word, self.failed_fg)
 
             text_left, _ = self.failed_font.render('You Lost!', (64, 64, 64), rotation=-15)
             text_right, _ = self.failed_font.render('You Lost!', (64, 64, 64), rotation=15)
@@ -288,8 +295,29 @@ class GameGraphics(object):
                                                   (int(surface.get_width() * self.game_over_text_animstate), int(surface.get_height() * self.game_over_text_animstate)))
             surface.blit(t_surf, (surface.get_width()/2 - t_surf.get_width()/2, surface.get_height()/2 - t_surf.get_height()/2))
 
+    def _render_time_left(self, time_left: int, surface: pygame.Surface):
+        cx, cy, r = (75, 75, 50)
 
-    def _redraw_screen(self) -> None:
+        # Draw circle
+        pygame.draw.circle(surface, (0, 0, 0), (cx, cy), r)
+        angle = (float(time_left)/self.time_max) * 360 - 90
+
+        points = [(cx, cy)]
+        for n in range(-90, int(angle)):
+            x_cur = cx + int((r - 2) * math.cos(n * math.pi / 180))
+            y_cur = cy + int((r - 2) * math.sin(n * math.pi / 180))
+            points.append((x_cur, y_cur))
+        points.append((cx, cy))
+
+        # Draw segment
+        if len(points) > 2:
+            if time_left < 10 * 60:
+                col = (255, 0, 0)
+            else:
+                col = (255, 255, 0)
+            pygame.draw.polygon(surface, col, points)
+
+    def _redraw_screen(self, time_left: int) -> None:
         self._clear_screen()
         self._render_cloud(self.screen)
         self._draw_voice_line(self.screen)
@@ -297,15 +325,16 @@ class GameGraphics(object):
         if self.game_over:
             self._render_gameover(self.screen)
 
+        self._render_time_left(time_left, self.screen)
         self._render_score(self.screen)
 
         pygame.display.update()
 
-    def tick(self) -> None:
+    def tick(self, time_left: int) -> None:
         if self.score != self.target_score:
             self.score = min([self.target_score, self.score + (float(self.target_score - self.prior_score) / self.scores_anim_length)])
         if self.game_over and self.game_over_animstate < 1:
             self.game_over_animstate = min([1, self.game_over_animstate + float(1)/self.failed_anim_length])
         if self.game_over and self.game_over_animstate >= 1 and self.game_over_text_animstate < 1:
             self.game_over_text_animstate = min([1, self.game_over_text_animstate + float(1) / self.failed_text_anim_length])
-        self._redraw_screen()
+        self._redraw_screen(time_left)
