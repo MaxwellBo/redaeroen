@@ -1,4 +1,4 @@
-from nlp import process, render_tokens, to_ir, get_token_by_pos
+from nlp import process, print_table, get_token_by_pos
 from voicerec import voice_command_generator
 
 # GENERAL IDEA:
@@ -37,7 +37,7 @@ def extract_command(string: str):
     tokens = process(string)
 
     # Render what was retrieved
-    render_tokens(tokens)
+    print_table(tokens)
 
     # Find the command's verb
     line_verbs = get_token_by_pos(tokens, enums.PartOfSpeech.Tag.VERB)
