@@ -105,19 +105,18 @@ def print_tree(tokens):
     edge_map = {}
     label_map = {}
 
-
     for i in tokens:
         verbose_tag = PartOfSpeech.reverse(POS_LOOKUP[ i.part_of_speech.tag ])
-        label_map[i.text.content] = f"{i.text.content}"
+        label_map[i.text.begin_offset] = i.text.content
         for j in i.get_children():
             if i is not j:
-                G.add_edge(i.text.content, j.text.content)
-                edge_map[(i.text.content, j.text.content)] = LABEL_LOOKUP[j.dependency_edge.label]
+                G.add_edge(i.text.begin_offset, j.text.begin_offset)
+                edge_map[(i.text.begin_offset, j.text.begin_offset)] = LABEL_LOOKUP[j.dependency_edge.label]
 
 
     depth_map = {}
     def recur(level, tok):
-        depth_map[tok.text.content] = (tok.text.begin_offset, -level)
+        depth_map[tok.text.begin_offset] = (tok.text.begin_offset, -level)
         list(map(lambda t: recur(level + 1, t), [ i for i in tok.get_children() if i is not tok ]))
 
     list(map(lambda t: recur(0, t), [ root ] ))
