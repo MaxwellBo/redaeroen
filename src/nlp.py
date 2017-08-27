@@ -102,11 +102,16 @@ def print_tree(tokens):
     root = [ i for i in tokens if enums.DependencyEdge.Label.ROOT in i.get_dependants() ][0]
 
     edge_map = {}
+    label_map = {}
+
 
     for i in tokens:
+        verbose_tag = PartOfSpeech.reverse(POS_LOOKUP[ i.part_of_speech.tag ])
+        label_map[i.text.content] = f"{i.text.content}"
         for j in i.get_children():
-            G.add_edge(i.text.content, j.text.content)
-            edge_map[(i.text.content, j.text.content)] = LABEL_LOOKUP[j.dependency_edge.label]
+            if i is not j:
+                G.add_edge(i.text.content, j.text.content)
+                edge_map[(i.text.content, j.text.content)] = LABEL_LOOKUP[j.dependency_edge.label]
 
 
     depth_map = {}
@@ -116,15 +121,13 @@ def print_tree(tokens):
 
     list(map(lambda t: recur(0, t), [ root ] ))
     
-
-    nx.draw_networkx(G, pos=depth_map)
-    nx.draw_networkx_labels(G, pos=depth_map)
+    # nx.draw_networkx(G, pos=depth_map)
+    nx.draw_networkx_labels(G, pos=depth_map, font_color='w', font_size=8, labels=label_map)
     nx.draw_networkx_edges(G, pos=depth_map)
-    nx.draw_networkx_edge_labels(G, pos=depth_map, edge_labels=edge_map)
+    nx.draw_networkx_edge_labels(G, pos=depth_map, edge_labels=edge_map, font_size=6)
     
-
     plt.axis('off')
-    plt.savefig("g.png", dpi=100)
+    plt.savefig("g.png", transparent=True)
 
     subprocess.run(["imgcat", "g.png"])
 
