@@ -7,7 +7,7 @@ from beautifultable import BeautifulTable
 import networkx as nx
 import matplotlib.pyplot as plt
 import subprocess
-from voicerec import voice_recognition_generator
+from src.voicerec import voice_recognition_generator
 
 from typing import Optional, Dict
 
