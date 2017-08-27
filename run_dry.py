@@ -1,4 +1,7 @@
 from dry import main
 
+import sys
+
 if __name__ == '__main__':
-    main()
+    exit_status = main()
+    sys.exit(exit_status)
