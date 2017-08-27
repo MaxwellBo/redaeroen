@@ -11,10 +11,15 @@ from voicerec import voice_recognition_generator
 
 from typing import Optional, Dict
 
-POS_LOOKUP = {v: k for k, v in enums.PartOfSpeech.Tag.__dict__.items()}
+
+def expand_pos(x):
+    POS_LOOKUP = {v: k for k, v in enums.PartOfSpeech.Tag.__dict__.items()}
+    return POS_LOOKUP[x]
 
 # https://github.com/GoogleCloudPlatform/google-cloud-python/blob/master/language/google/cloud/gapic/language/v1/enums.py
-LABEL_LOOKUP = {v: k for k, v in enums.DependencyEdge.Label.__dict__.items()}
+def expand_label(x):
+    LABEL_LOOKUP = {v: k for k, v in enums.DependencyEdge.Label.__dict__.items()}
+    return LABEL_LOOKUP[x]
 
 def align( content=""
             , begin=""
@@ -33,23 +38,32 @@ def align( content=""
             , children_content
         #    , edge_index
             ]
+
+class Null(object):
+    def __getattribute__(self, name):
+        return lambda x: Null()
+
+    def __nonzero__(self): 
+        return False
+    
+    __bool__ = __nonzero__
             
 def bind_tokens(tokens):
     def get_dependant(self, label) -> Optional[types.Token]:
         try:
-            self.get_dependants()[label]
+            return self.get_dependants()[label]
         except Exception as e:
-            return None
+            return Null()
 
     def pretty(token):
-        verbose_tag = PartOfSpeech.reverse(POS_LOOKUP[ token.part_of_speech.tag ])
+        verbose_tag = PartOfSpeech.reverse(expand_pos(token.part_of_speech.tag))
 
         return align( content=token.text.content
                     , begin=token.text.begin_offset
                     , part_of_speech=verbose_tag
                     , parent_content=token.get_parent().text.content
                     , children_content=str([i.text.content for i in token.get_children() ])
-                    , edge_label=LABEL_LOOKUP[token.dependency_edge.label]
+                    , edge_label=expand_label(token.dependency_edge.label)
                     , lemma=token.lemma
                     , )
 
@@ -106,12 +120,12 @@ def print_tree(tokens):
     label_map = {}
 
     for i in tokens:
-        short_tag = POS_LOOKUP[ i.part_of_speech.tag ]
+        short_tag = expand_pos( i.part_of_speech.tag )
         label_map[i.text.begin_offset] =  f"{i.text.content}\n{short_tag}"
         for j in i.get_children():
             if i is not j:
                 G.add_edge(i.text.begin_offset, j.text.begin_offset)
-                edge_map[(i.text.begin_offset, j.text.begin_offset)] = LABEL_LOOKUP[j.dependency_edge.label]
+                edge_map[(i.text.begin_offset, j.text.begin_offset)] = expand_label(j.dependency_edge.label)
 
 
     depth_map = {}

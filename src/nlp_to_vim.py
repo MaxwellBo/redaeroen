@@ -1,4 +1,4 @@
-from nlp import process, print_table, get_token_by_pos
+from nlp import process, print_table, get_token_by_pos, expand_label, expand_pos
 from voicerec import voice_command_generator
 
 # GENERAL IDEA:
@@ -12,8 +12,6 @@ from voicerec import voice_command_generator
 #           - E.g. 'word'
 #   4) Direction:
 #
-
-
 
 from google.cloud.language import enums
 
@@ -34,10 +32,8 @@ known_nouns = [
 ]
 
 def extract_command(string: str):
+    l = enums.DependencyEdge.Label
     tokens = process(string)
-
-    # Render what was retrieved
-    print_table(tokens)
 
     # Find the command's verb
     line_verbs = get_token_by_pos(tokens, enums.PartOfSpeech.Tag.VERB)
@@ -49,39 +45,29 @@ def extract_command(string: str):
 
     verb = candidate_verbs[0]
 
-    # Find out wha
-    dep = get_token_by_pos(verb.get_children(), enums.PartOfSpeech.Tag.ADP)[0]
-    dep_nouns = get_token_by_pos(dep.get_children(), enums.PartOfSpeech.Tag.NOUN)
-    candidate_dep_nouns = [v for v in dep_nouns if v.text.content.lower() in known_nouns]
-    if len(candidate_dep_nouns) == 0:
-        print("ERROR: No dependant nouns relevant to" + verb.text.content + " ->" + dep.text.content + "found")
-        return None
-    
-    dep_noun = candidate_dep_nouns[0]
+    def get_possessive(token):
+        x = token.get_dependant(l.PREP)
+        y = x.get_dependant(l.POBJ)
+        z = token.get_dependant(l.DOBJ)
+        return y or x or z
 
-    # Find the object associated with that verb
-    line_nouns = get_token_by_pos(verb.get_children(), enums.PartOfSpeech.Tag.NOUN)
-    candidate_nouns = [v for v in line_nouns if v.text.content.lower() in known_nouns]
-    if len(candidate_nouns) == 0:
-        print("ERROR: No nouns relevant to " + verb.text.content + "found")
-        return None
+    def get_num(token):
+        x = token.get_dependant(l.AMOD)
+        y = token.get_dependant(l.NUM)
+        return y or x 
 
-    noun = candidate_nouns[0]
+    pos = get_possessive(verb)
 
-    # Find how many there are
-    candidate_nums = get_token_by_pos(noun.get_children(), enums.PartOfSpeech.Tag.NUM)
-    if len(candidate_nums) == 0:
-        num = None
-    else:
-        num = candidate_nums[0]
+    print("NUMBER", get_num(pos).text.content)
+    print("VERB", verb.text.content)
+    print("TARGET", pos.text.content)
 
-
-    print("Action: " + verb.text.content)
-    print("Dependant: " + dep_noun.text.content)
-    print("Object: " + noun.text.content)
-    print("Number of times: " + num.text.content if num is not None else "one")
 
 # extract_command("go down a line")
-extract_command("go to the first line")
+# extract_command("delete the next two words")
+extract_command("delete in the current word")
+# extract_command("go to the first line the file")
+# extract_command("go to the first word of the line")
+# extract_command("go to the first line")
 # extract_command("Delete the last five words from the previous line")
 # extract_command("Hey google, please delete the first five words from this line")
