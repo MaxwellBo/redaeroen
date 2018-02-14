@@ -52,22 +52,27 @@ def extract_command(string: str):
         return y or x or z
 
     def get_num(token):
-        x = token.get_dependant(l.AMOD)
-        y = token.get_dependant(l.NUM)
-        return y or x 
+        return token.get_dependant(l.NUM)
+
+    def get_context(token):
+        return token.get_dependant(l.AMOD)
 
     pos = get_possessive(verb)
 
-    print("NUMBER", get_num(pos).text.content)
-    print("VERB", verb.text.content)
-    print("TARGET", pos.text.content)
+    print("NUMBER", get_num(pos))
+    print("CONTEXT", get_context(pos))
+    print("VERB", verb)
+    print("TARGET", pos)
+
 
 
 # extract_command("go down a line")
 # extract_command("delete the next two words")
-extract_command("delete in the current word")
+# extract_command("delete in the current word")
+# extract_command("delete the next two words")
 # extract_command("go to the first line the file")
-# extract_command("go to the first word of the line")
+# extract_command("delete the two previous words")
+extract_command("go to the first word of the line")
 # extract_command("go to the first line")
 # extract_command("Delete the last five words from the previous line")
 # extract_command("Hey google, please delete the first five words from this line")
